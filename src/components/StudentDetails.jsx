@@ -14,7 +14,7 @@ function Registration() {
   const [email, setEmail] = useState("");
 
   useEffect(() => {
-    fetch("https://backendforquiz.onrender.com/registration-config")
+    fetch("https://quizappbackend-xngu.onrender.com/registration-config")
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
@@ -97,7 +97,7 @@ function Registration() {
     console.log("📤 Submitting payload:", payload);
 
     try {
-      const res = await fetch("https://backendforquiz.onrender.com/register", {
+      const res = await fetch("https://quizappbackend-xngu.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
