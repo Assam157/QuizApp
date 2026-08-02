@@ -1,7 +1,7 @@
  import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const API_BASE = "https://backendforquiz.onrender.com";
+const API_BASE = "https://quizappbackend-xngu.onrender.com";
 
 // ---------- Utility: Fisher–Yates shuffle ----------
 const shuffleArray = (array) => {
