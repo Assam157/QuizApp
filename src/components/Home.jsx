@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
@@ -40,24 +40,36 @@ function Home() {
 
           {showRules && (
             <div style={styles.rulesBox}>
-              <h3 style={{ marginTop: 0, color: "#333" }}>Quiz Instructions & Rules</h3>
+              <h3 style={{ marginTop: 0, color: "#1a237e" }}>NSTAD Online Quiz – Rules & Regulations</h3>
               <ul style={styles.rulesList}>
                 <li>
-                  <strong>Registration:</strong> All students must register with a valid registration number before starting.
+                  <strong>Eligibility:</strong> Open to students of Class XI, Class XII, and Undergraduates from any recognized institution. Participation is free and only one entry per participant.
                 </li>
                 <li>
-                  <strong>Time Limit:</strong> The quiz is strictly timed. The timer starts automatically upon entering the quiz page.
+                  <strong>Quiz Format:</strong> Multiple-choice questions (MCQs) based on archival documents of Acharya Prafulla Chandra Ray. Explore <a href="https://www.nstad.in" target="_blank" rel="noopener noreferrer">www.nstad.in</a> beforehand.
                 </li>
                 <li>
-                  <strong>Submission:</strong> Ensure you click submit before the clock runs out to avoid automatic disqualification.
+                  <strong>Submission Guidelines:</strong> The quiz will be available only on the scheduled date and time. Responses submitted after the closing time will not be considered. Once submitted, answers cannot be changed.
                 </li>
                 <li>
-                  <strong>Single Attempt:</strong> Once submitted, you cannot retake or re-enter the active quiz session.
+                  <strong>Time:</strong> 25 MCQs will appear one by one. Duration is 25 minutes – the quiz will automatically close at the end time.
                 </li>
                 <li>
-                  <strong>Fair Play:</strong> Do not refresh or navigate away from the quiz page during an active session.
+                  <strong>Evaluation:</strong> +1 for each correct answer, <strong>−1</strong> for each wrong answer (negative marking). In case of a tie, earlier submission time gets preference.
+                </li>
+                <li>
+                  <strong>Fair Participation:</strong> Answer independently. Unfair means or multiple entries may lead to disqualification. Organizers reserve the right to verify details.
+                </li>
+                <li>
+                  <strong>Results:</strong> Winners are decided by highest score; if tied, faster response time wins. The organizing committee’s decision is final.
+                </li>
+                <li>
+                  <strong>Disclaimer:</strong> By participating, you agree to abide by these rules. Organizers are not responsible for poor internet connectivity. No extensions will be granted. The quiz may be modified or cancelled without prior notice.
                 </li>
               </ul>
+              <p style={{ marginTop: "12px", fontSize: "13px", color: "#555" }}>
+                📌 Explore the National Science and Technology Digital Archive: <a href="https://www.nstad.in" target="_blank" rel="noopener noreferrer">www.nstad.in</a>
+              </p>
             </div>
           )}
         </div>
@@ -141,13 +153,13 @@ const styles = {
     padding: "20px",
     borderRadius: "8px",
     textAlign: "left",
-    borderLeft: "4px solid #007bff",
+    borderLeft: "4px solid #1a237e",
   },
   rulesList: {
     margin: 0,
     paddingLeft: "20px",
     color: "#444",
-    lineHeight: "1.6",
+    lineHeight: "1.8",
     fontSize: "14px",
   },
 };
