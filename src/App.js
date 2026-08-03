@@ -5,7 +5,7 @@ import Registration from "./components/StudentDetails";
 import Login from "./components/StudentLogin.jsx";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/CertificatePage";
-import RulesPage from "./componenets/RulesPage";
+import RulesPage from "./componenets/RulesPage.jsx";
 import "./App.css";
 
 function App() {
@@ -17,7 +17,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/quiz" element={<QuizPage />} />
         <Route path="/result" element={<ResultPage />} />
- <Route path="/rules" element={<RulesPage />} />
+        <Route path="/rules" element={<RulesPage />} />
       </Routes>
     </BrowserRouter>
   );
