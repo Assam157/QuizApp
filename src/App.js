@@ -5,7 +5,7 @@ import Registration from "./components/StudentDetails";
 import Login from "./components/StudentLogin.jsx";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/CertificatePage";
-import RulesPage from "./componenets/RulesPage";
+import RulesPage from "./componets/RulesPage";
 import "./App.css";
 
 function App() {
