@@ -1,7 +1,7 @@
-import React from "react";
+ import React from "react";
 import { useNavigate } from "react-router-dom";
 
-function Home() {
+function RulesPage() {
   const navigate = useNavigate();
 
   return (
@@ -10,34 +10,84 @@ function Home() {
       <div style={styles.bgCircle2} />
 
       <div style={styles.card}>
-        <div style={styles.iconContainer}>
-          <span style={styles.icon}>🎓</span>
-        </div>
-        <h1 style={styles.title}>Student Quiz Portal</h1>
+        {/* Back to Home */}
+        <button style={styles.backBtn} onClick={() => navigate("/")}>
+          ← Back to Home
+        </button>
+
+        <h1 style={styles.title}>📜 NSTAD Online Quiz – Rules & Regulations</h1>
         <p style={styles.subtitle}>
-          Welcome! Please review the rules or proceed to register or log in.
+          Please read all rules carefully before starting the quiz.
         </p>
 
-        <div style={styles.featureRow}>
-          <div style={styles.featureCard}>
-            <span style={styles.featureIcon}>⏱️</span>
-            <span style={styles.featureLabel}>Timed Quizzes</span>
+        {/* Rules List – all content from original */}
+        <div style={styles.rulesContainer}>
+          <div style={styles.rulesGrid}>
+            <div style={styles.ruleCard}>
+              <div style={styles.ruleNumber}>01</div>
+              <div style={styles.ruleContent}>
+                <strong>Eligibility:</strong> Open to students of Class XI, Class XII, and Undergraduates from any recognized institution. Participation is free and only one entry per participant.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #e17055, #d63031)" }}>02</div>
+              <div style={styles.ruleContent}>
+                <strong>Quiz Format:</strong> Multiple-choice questions (MCQs) based on archival documents of Acharya Prafulla Chandra Ray. Explore{" "}
+                <a href="https://www.nstad.in" target="_blank" rel="noopener noreferrer" style={{ color: "#6c5ce7", fontWeight: 600 }}>
+                  www.nstad.in
+                </a>{" "}
+                beforehand.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #00b894, #00cec9)" }}>03</div>
+              <div style={styles.ruleContent}>
+                <strong>Submission Guidelines:</strong> The quiz will be available only on the scheduled date and time. Responses submitted after the closing time will not be considered. Once submitted, answers cannot be changed.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #fdcb6e, #e17055)" }}>04</div>
+              <div style={styles.ruleContent}>
+                <strong>Time:</strong> 25 MCQs will appear one by one. Duration is 25 minutes – the quiz will automatically close at the end time.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #6c5ce7, #a29bfe)" }}>05</div>
+              <div style={styles.ruleContent}>
+                <strong>Evaluation:</strong> +1 for each correct answer, <strong>−1</strong> for each wrong answer (negative marking). In case of a tie, earlier submission time gets preference.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #e17055, #fdcb6e)" }}>06</div>
+              <div style={styles.ruleContent}>
+                <strong>Fair Participation:</strong> Answer independently. Unfair means or multiple entries may lead to disqualification. Organizers reserve the right to verify details.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #2d3436, #636e72)" }}>07</div>
+              <div style={styles.ruleContent}>
+                <strong>Results:</strong> Winners are decided by highest score; if tied, faster response time wins. The organizing committee’s decision is final.
+              </div>
+            </div>
+            <div style={styles.ruleCard}>
+              <div style={{ ...styles.ruleNumber, background: "linear-gradient(135deg, #6c5ce7, #5a4bd1)" }}>08</div>
+              <div style={styles.ruleContent}>
+                <strong>Disclaimer:</strong> By participating, you agree to abide by these rules. Organizers are not responsible for poor internet connectivity. No extensions will be granted. The quiz may be modified or cancelled without prior notice.
+              </div>
+            </div>
           </div>
-          <div style={styles.featureCard}>
-            <span style={styles.featureIcon}>📊</span>
-            <span style={styles.featureLabel}>Instant Results</span>
-          </div>
-          <div style={styles.featureCard}>
-            <span style={styles.featureIcon}>🔒</span>
-            <span style={styles.featureLabel}>Secure Access</span>
+
+          {/* Prominent NSTAD link */}
+          <div style={styles.nstadBox}>
+            📌 Explore the National Science and Technology Digital Archive:{" "}
+            <a href="https://www.nstad.in" target="_blank" rel="noopener noreferrer" style={styles.nstadLink}>
+              www.nstad.in
+            </a>
           </div>
         </div>
 
-        <div style={styles.divider}>
-          <span style={styles.dividerText}>Get Started</span>
-        </div>
-
-        <div style={styles.buttonGroup}>
+        {/* Action Buttons */}
+        <div style={styles.actionGroup}>
           <button
             style={styles.primaryBtn}
             onClick={() => navigate("/register")}
@@ -50,7 +100,7 @@ function Home() {
               e.target.style.boxShadow = "0 4px 15px rgba(108, 92, 231, 0.25)";
             }}
           >
-            <span style={styles.btnIcon}>📝</span> Register Now
+            📝 Register Now
           </button>
           <button
             style={styles.secondaryBtn}
@@ -64,23 +114,15 @@ function Home() {
               e.target.style.boxShadow = "0 4px 15px rgba(46, 213, 115, 0.25)";
             }}
           >
-            <span style={styles.btnIcon}>🔑</span> Student Login
+            🔑 Student Login
           </button>
         </div>
-
-        {/* Button to navigate to separate rules page */}
-        <button
-          style={styles.rulesLinkBtn}
-          onClick={() => navigate("/rules")}
-        >
-          📜 Read Quiz Rules
-        </button>
       </div>
     </div>
   );
 }
 
-export default Home;
+export default RulesPage;
 
 const styles = {
   page: {
@@ -125,79 +167,96 @@ const styles = {
     position: "relative",
     zIndex: 1,
     backdropFilter: "blur(10px)",
+    maxHeight: "90vh",
+    display: "flex",
+    flexDirection: "column",
   },
-  iconContainer: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "20px",
-    background: "linear-gradient(135deg, #6c5ce7, #a29bfe)",
+  backBtn: {
+    alignSelf: "flex-start",
+    background: "none",
+    border: "none",
+    color: "#6c5ce7",
+    fontSize: "15px",
+    fontWeight: "700",
+    cursor: "pointer",
+    marginBottom: "12px",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    margin: "0 auto 20px",
-    boxShadow: "0 8px 25px rgba(108, 92, 231, 0.3)",
+    gap: "4px",
   },
-  icon: { fontSize: "34px", lineHeight: 1 },
   title: {
-    margin: "0 0 8px 0",
-    fontSize: "30px",
+    fontSize: "24px",
     fontWeight: "800",
     color: "#1a1a2e",
+    margin: "0 0 8px",
     letterSpacing: "-0.5px",
   },
   subtitle: {
     color: "#5a5a7a",
     fontSize: "15px",
-    lineHeight: "1.6",
-    marginBottom: "24px",
-    maxWidth: "420px",
-    marginLeft: "auto",
-    marginRight: "auto",
+    marginBottom: "20px",
   },
-  featureRow: {
+  rulesContainer: {
+    flex: "1 1 auto",
+    overflowY: "auto",
+    marginBottom: "20px",
+    paddingRight: "4px",
+  },
+  rulesGrid: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    textAlign: "left",
+  },
+  ruleCard: {
+    display: "flex",
+    gap: "14px",
+    alignItems: "flex-start",
+    backgroundColor: "#faf9ff",
+    borderRadius: "12px",
+    padding: "14px 16px",
+    border: "1px solid #eeeafc",
+  },
+  ruleNumber: {
+    flexShrink: 0,
+    width: "36px",
+    height: "36px",
+    borderRadius: "10px",
+    background: "linear-gradient(135deg, #6c5ce7, #a29bfe)",
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: "14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ruleContent: {
+    flex: 1,
+    fontSize: "14px",
+    lineHeight: "1.6",
+    color: "#333",
+  },
+  nstadBox: {
+    marginTop: "16px",
+    backgroundColor: "#eef2ff",
+    borderRadius: "10px",
+    padding: "12px 16px",
+    fontSize: "14px",
+    color: "#1a237e",
+    borderLeft: "4px solid #6c5ce7",
+    textAlign: "left",
+  },
+  nstadLink: {
+    color: "#6c5ce7",
+    fontWeight: 700,
+    textDecoration: "underline",
+  },
+  actionGroup: {
     display: "flex",
     gap: "12px",
     justifyContent: "center",
     flexWrap: "wrap",
-    marginBottom: "28px",
-  },
-  featureCard: {
-    flex: "1 1 100px",
-    minWidth: "100px",
-    maxWidth: "140px",
-    backgroundColor: "#f8f7ff",
-    borderRadius: "14px",
-    padding: "14px 10px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "6px",
-    border: "1px solid #eeeafc",
-  },
-  featureIcon: { fontSize: "26px", lineHeight: 1 },
-  featureLabel: { fontSize: "12px", fontWeight: "600", color: "#4a4a6a" },
-  divider: {
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    marginBottom: "22px",
-  },
-  dividerText: {
-    fontSize: "12px",
-    fontWeight: "700",
-    color: "#999",
-    textTransform: "uppercase",
-    letterSpacing: "1.5px",
-    margin: "0 auto",
-    padding: "0 16px",
-    background: "rgba(255,255,255,0.97)",
-  },
-  buttonGroup: {
-    display: "flex",
-    gap: "14px",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    marginBottom: "24px",
+    marginTop: "10px",
   },
   primaryBtn: {
     display: "inline-flex",
@@ -228,17 +287,5 @@ const styles = {
     color: "#4a4a6a",
     boxShadow: "0 4px 15px rgba(0,0,0,0.05)",
     transition: "all 0.25s ease",
-  },
-  btnIcon: { fontSize: "18px", lineHeight: 1 },
-  rulesLinkBtn: {
-    marginTop: "12px",
-    background: "none",
-    border: "none",
-    color: "#6c5ce7",
-    fontSize: "15px",
-    fontWeight: "700",
-    textDecoration: "underline",
-    cursor: "pointer",
-    transition: "color 0.2s",
   },
 };
