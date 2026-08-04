@@ -1,7 +1,7 @@
  import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://quizappbackend-xngu.onrender.com";
 
 // ---------- Utility: Fisher–Yates shuffle ----------
 const shuffleArray = (array) => {
@@ -36,13 +36,14 @@ function QuizPage() {
   const [isLandscape, setIsLandscape] = useState(true);
   const timerRef = useRef(null);
   const autoSubmitted = useRef(false);
+  const submitQuizRef = useRef(null); // will hold the submit function
 
-  // ---------- Redirect if no student ----------
+  // Redirect if no student
   useEffect(() => {
     if (!student) navigate("/login");
   }, [student, navigate]);
 
-  // ---------- Check disqualification ----------
+  // Check disqualification
   useEffect(() => {
     if (!student) return;
     const checkDisqualification = async () => {
@@ -64,7 +65,6 @@ function QuizPage() {
   // ---------- Orientation enforcement ----------
   useEffect(() => {
     const checkOrientation = () => {
-      // Use both matchMedia and screen.orientation.type for reliability
       const isLandscapeNow =
         window.matchMedia("(orientation: landscape)").matches ||
         (window.screen?.orientation?.type?.startsWith("landscape") ?? false) ||
@@ -73,16 +73,13 @@ function QuizPage() {
       setIsLandscape(isLandscapeNow);
     };
 
-    // Check on mount
     checkOrientation();
 
-    // Listen to orientation changes
     const handleChange = () => checkOrientation();
 
     window.addEventListener("orientationchange", handleChange);
     window.addEventListener("resize", handleChange);
 
-    // Also listen to screen.orientation change if available
     if (window.screen?.orientation) {
       window.screen.orientation.addEventListener("change", handleChange);
     }
@@ -125,7 +122,7 @@ function QuizPage() {
     return () => clearInterval(interval);
   }, [quizActive, student, navigate, examStartTime]);
 
-  // ---------- Fetch questions and shuffle ----------
+  // ---------- Fetch questions ----------
   useEffect(() => {
     if (!quizActive) return;
 
@@ -166,29 +163,6 @@ function QuizPage() {
     fetchQuestions();
   }, [quizActive, student.regNo]);
 
-  // ---------- Auto-submit on timer end ----------
-  const handleTimeExpired = useCallback(() => {
-    if (autoSubmitted.current) return;
-    autoSubmitted.current = true;
-    submitQuiz(true);
-  }, []);
-
-  // Timer effect
-  useEffect(() => {
-    if (!quizActive || submitted || questions.length === 0 || disqualified) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          handleTimeExpired();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [quizActive, submitted, questions, disqualified, handleTimeExpired]);
-
   // ---------- Navigation ----------
   const goTo = (idx) => {
     if (idx >= 0 && idx < questions.length) setCurrent(idx);
@@ -206,42 +180,78 @@ function QuizPage() {
     setAnswers(updated);
   };
 
-  // ---------- Submit quiz ----------
-  const submitQuiz = async (auto = false) => {
-    if (submitted) return;
-    if (!auto && !window.confirm("Are you sure you want to submit the quiz?")) return;
-    setSubmitted(true);
-    setSubmitting(true);
-    clearInterval(timerRef.current);
-    try {
-      const originalAnswers = new Array(questions.length).fill(null);
-      questions.forEach((q, shuffledIndex) => {
-        originalAnswers[q.originalIndex] = answers[shuffledIndex];
-      });
+  // ---------- Submit quiz (defined with useCallback, stored in ref) ----------
+  const submitQuiz = useCallback(
+    async (auto = false) => {
+      if (submitted) return;
+      if (!auto && !window.confirm("Are you sure you want to submit the quiz?")) return;
+      setSubmitted(true);
+      setSubmitting(true);
+      clearInterval(timerRef.current);
 
-      const res = await fetch(`${API_BASE}/submit-quiz`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ regNo: student.regNo, answers: originalAnswers }),
-      });
-      const data = await res.json();
-      if (data.disqualified) {
-        setDisqualified(true);
-        setDisqualifiedMessage(data.message || "Time's up! You have been disqualified.");
+      try {
+        const originalAnswers = new Array(questions.length).fill(null);
+        questions.forEach((q, shuffledIndex) => {
+          originalAnswers[q.originalIndex] = answers[shuffledIndex];
+        });
+
+        const res = await fetch(`${API_BASE}/submit-quiz`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regNo: student.regNo, answers: originalAnswers }),
+        });
+        const data = await res.json();
+        if (data.disqualified) {
+          setDisqualified(true);
+          setDisqualifiedMessage(data.message || "Time's up! You have been disqualified.");
+          setSubmitting(false);
+        } else {
+          navigate("/result", { state: { ...data, student, totalQuestions: questions.length } });
+        }
+      } catch (err) {
+        alert("Submission failed: " + err.message);
+        setSubmitted(false);
         setSubmitting(false);
-      } else {
-        navigate("/result", { state: { ...data, student, totalQuestions: questions.length } });
+      } finally {
+        setSubmitting(false);
       }
-    } catch (err) {
-      alert("Submission failed: " + err.message);
-      setSubmitted(false);
-      setSubmitting(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    },
+    [questions, answers, student, navigate, submitted]
+  );
 
-  // ---------- Determine if we are on mobile (to show overlay) ----------
+  // Keep ref updated
+  useEffect(() => {
+    submitQuizRef.current = submitQuiz;
+  }, [submitQuiz]);
+
+  // ---------- Auto-submit on timer end (stable callback) ----------
+  const handleTimeExpired = useCallback(() => {
+    if (autoSubmitted.current) return;
+    autoSubmitted.current = true;
+    if (submitQuizRef.current) {
+      submitQuizRef.current(true);
+    }
+  }, []);
+
+  // ---------- Timer effect (stable deps) ----------
+  useEffect(() => {
+    if (!quizActive || submitted || questions.length === 0 || disqualified) return;
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          handleTimeExpired();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerRef.current);
+  }, [quizActive, submitted, questions.length, disqualified, handleTimeExpired]);
+
+  // ---------- Determine mobile ----------
   const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
 
   // ---------- Landscape overlay (mandatory) ----------
@@ -260,7 +270,7 @@ function QuizPage() {
     );
   }
 
-  // ---------- Disqualified overlay ----------
+  // ---------- Disqualified ----------
   if (disqualified) {
     return (
       <div style={styles.waitContainer}>
@@ -635,7 +645,6 @@ function QuizPage() {
 
 // ---------- Styles ----------
 const styles = {
-  // Existing styles (unchanged) plus new landscape overlay
   landscapeOverlay: {
     position: "fixed",
     top: 0,
