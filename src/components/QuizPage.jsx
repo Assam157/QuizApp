@@ -1,7 +1,7 @@
  import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-const API_BASE = "https://quizappbackend-xngu.onrender.com";
+const API_BASE = "http://localhost:3000";
 
 // ---------- Utility: Fisher–Yates shuffle ----------
 const shuffleArray = (array) => {
@@ -33,15 +33,16 @@ function QuizPage() {
   const [questionsError, setQuestionsError] = useState(null);
   const [disqualified, setDisqualified] = useState(false);
   const [disqualifiedMessage, setDisqualifiedMessage] = useState("");
+  const [isLandscape, setIsLandscape] = useState(true);
   const timerRef = useRef(null);
-  const autoSubmitted = useRef(false); // prevent double auto-submit
+  const autoSubmitted = useRef(false);
 
-  // Redirect if no student
+  // ---------- Redirect if no student ----------
   useEffect(() => {
     if (!student) navigate("/login");
   }, [student, navigate]);
 
-  // Check disqualification status (after refresh)
+  // ---------- Check disqualification ----------
   useEffect(() => {
     if (!student) return;
     const checkDisqualification = async () => {
@@ -54,40 +55,43 @@ function QuizPage() {
           setQuizActive(false);
         }
       } catch (err) {
-        // Ignore "No submission found" or network errors
         console.debug("Disqualification check skipped:", err.message);
       }
     };
     checkDisqualification();
   }, [student]);
 
-  // ---------- Auto‑landscape lock on mobile ----------
+  // ---------- Orientation enforcement ----------
   useEffect(() => {
-    const lockOrientation = async () => {
-      try {
-        if (window.screen?.orientation?.lock) {
-          // Only lock on mobile: screen width < 768px OR touch device
-          const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
-          if (isMobile) {
-            await window.screen.orientation.lock('landscape');
-          }
-        }
-      } catch (err) {
-        // Many browsers require a user gesture; silently ignore
-        console.debug('Orientation lock not supported or denied:', err);
-      }
+    const checkOrientation = () => {
+      // Use both matchMedia and screen.orientation.type for reliability
+      const isLandscapeNow =
+        window.matchMedia("(orientation: landscape)").matches ||
+        (window.screen?.orientation?.type?.startsWith("landscape") ?? false) ||
+        window.innerWidth > window.innerHeight;
+
+      setIsLandscape(isLandscapeNow);
     };
 
-    lockOrientation();
+    // Check on mount
+    checkOrientation();
 
-    // Cleanup: unlock when leaving the page
+    // Listen to orientation changes
+    const handleChange = () => checkOrientation();
+
+    window.addEventListener("orientationchange", handleChange);
+    window.addEventListener("resize", handleChange);
+
+    // Also listen to screen.orientation change if available
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener("change", handleChange);
+    }
+
     return () => {
-      try {
-        if (window.screen?.orientation?.unlock) {
-          window.screen.orientation.unlock();
-        }
-      } catch (err) {
-        // ignore
+      window.removeEventListener("orientationchange", handleChange);
+      window.removeEventListener("resize", handleChange);
+      if (window.screen?.orientation) {
+        window.screen.orientation.removeEventListener("change", handleChange);
       }
     };
   }, []);
@@ -133,12 +137,8 @@ function QuizPage() {
       try {
         await fetch(`${API_BASE}/start-quiz`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            regNo: student.regNo,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regNo: student.regNo }),
         });
 
         const res = await fetch(`${API_BASE}/get-questions`);
@@ -155,7 +155,6 @@ function QuizPage() {
 
         setQuestions(shuffled);
         setAnswers(new Array(shuffled.length).fill(null));
-
         setQuizReady(true);
       } catch (err) {
         setQuestionsError(err.message);
@@ -171,7 +170,6 @@ function QuizPage() {
   const handleTimeExpired = useCallback(() => {
     if (autoSubmitted.current) return;
     autoSubmitted.current = true;
-    // Auto-submit with current answers
     submitQuiz(true);
   }, []);
 
@@ -208,7 +206,7 @@ function QuizPage() {
     setAnswers(updated);
   };
 
-  // ---------- Submit quiz (manual or auto) with re‑mapping ----------
+  // ---------- Submit quiz ----------
   const submitQuiz = async (auto = false) => {
     if (submitted) return;
     if (!auto && !window.confirm("Are you sure you want to submit the quiz?")) return;
@@ -216,7 +214,6 @@ function QuizPage() {
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      // Map answers back to the original (database) order
       const originalAnswers = new Array(questions.length).fill(null);
       questions.forEach((q, shuffledIndex) => {
         originalAnswers[q.originalIndex] = answers[shuffledIndex];
@@ -243,6 +240,25 @@ function QuizPage() {
       setSubmitting(false);
     }
   };
+
+  // ---------- Determine if we are on mobile (to show overlay) ----------
+  const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
+
+  // ---------- Landscape overlay (mandatory) ----------
+  if (isMobile && !isLandscape) {
+    return (
+      <div style={styles.landscapeOverlay}>
+        <div style={styles.landscapeContent}>
+          <div style={styles.rotateIcon}>📱↻</div>
+          <h2 style={{ color: "#000" }}>Please rotate your device</h2>
+          <p style={{ color: "#000" }}>This quiz must be taken in <strong>landscape</strong> mode.</p>
+          <p style={{ color: "#000", fontSize: "0.9rem" }}>
+            Turn your phone sideways to continue.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ---------- Disqualified overlay ----------
   if (disqualified) {
@@ -353,6 +369,7 @@ function QuizPage() {
     );
   }
 
+  // ---------- Loading / error / submitting ----------
   if (loadingQuestions || !quizReady) {
     return (
       <div style={styles.loadingOverlay}>
@@ -443,7 +460,6 @@ function QuizPage() {
   }
 
   const q = questions[current];
-
   if (!q) {
     return (
       <div style={styles.loadingOverlay}>
@@ -452,6 +468,7 @@ function QuizPage() {
       </div>
     );
   }
+
   const attemptedCount = answers.filter((a) => a !== null).length;
   const totalQuestions = questions.length;
   const progress = ((current + 1) / totalQuestions) * 100;
@@ -618,6 +635,30 @@ function QuizPage() {
 
 // ---------- Styles ----------
 const styles = {
+  // Existing styles (unchanged) plus new landscape overlay
+  landscapeOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f8fafc",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  landscapeContent: {
+    textAlign: "center",
+    padding: "2rem",
+    maxWidth: 400,
+  },
+  rotateIcon: {
+    fontSize: "4rem",
+    marginBottom: "1rem",
+    display: "inline-block",
+    animation: "spin 2s linear infinite",
+  },
   waitContainer: {
     position: "relative",
     width: "100%",
