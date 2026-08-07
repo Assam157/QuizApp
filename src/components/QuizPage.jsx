@@ -1,4 +1,4 @@
- import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const API_BASE = "https://quizappbackend-xngu.onrender.com";
@@ -34,9 +34,11 @@ function QuizPage() {
   const [disqualified, setDisqualified] = useState(false);
   const [disqualifiedMessage, setDisqualifiedMessage] = useState("");
   const [isLandscape, setIsLandscape] = useState(true);
+
   const timerRef = useRef(null);
   const autoSubmitted = useRef(false);
-  const submitQuizRef = useRef(null); // will hold the submit function
+  const submitQuizRef = useRef(null);
+  const timerInitialized = useRef(false);
 
   // Redirect if no student
   useEffect(() => {
@@ -101,7 +103,17 @@ function QuizPage() {
       try {
         const res = await fetch(`${API_BASE}/quiz-status`);
         const data = await res.json();
+
         if (data.isQuizOpen) {
+          // Only set timeLeft once from server's endTime
+          if (!timerInitialized.current) {
+            const end = new Date(data.endTime);
+            const now = new Date();
+            let remaining = Math.floor((end - now) / 1000);
+            if (remaining < 0) remaining = 0;
+            setTimeLeft(remaining);
+            timerInitialized.current = true;
+          }
           setQuizActive(true);
         } else if (data.hasEnded) {
           alert("The quiz has ended. You cannot take it now.");
@@ -180,7 +192,7 @@ function QuizPage() {
     setAnswers(updated);
   };
 
-  // ---------- Submit quiz (defined with useCallback, stored in ref) ----------
+  // ---------- Submit quiz (with auto flag) ----------
   const submitQuiz = useCallback(
     async (auto = false) => {
       if (submitted) return;
@@ -198,7 +210,11 @@ function QuizPage() {
         const res = await fetch(`${API_BASE}/submit-quiz`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ regNo: student.regNo, answers: originalAnswers }),
+          body: JSON.stringify({
+            regNo: student.regNo,
+            answers: originalAnswers,
+            auto: auto,
+          }),
         });
         const data = await res.json();
         if (data.disqualified) {
@@ -224,16 +240,16 @@ function QuizPage() {
     submitQuizRef.current = submitQuiz;
   }, [submitQuiz]);
 
-  // ---------- Auto-submit on timer end (stable callback) ----------
+  // ---------- Auto-submit on timer end ----------
   const handleTimeExpired = useCallback(() => {
     if (autoSubmitted.current) return;
     autoSubmitted.current = true;
     if (submitQuizRef.current) {
-      submitQuizRef.current(true);
+      submitQuizRef.current(true); // auto = true
     }
   }, []);
 
-  // ---------- Timer effect (stable deps) ----------
+  // ---------- Timer effect ----------
   useEffect(() => {
     if (!quizActive || submitted || questions.length === 0 || disqualified) return;
 
@@ -250,6 +266,13 @@ function QuizPage() {
 
     return () => clearInterval(timerRef.current);
   }, [quizActive, submitted, questions.length, disqualified, handleTimeExpired]);
+
+  // ---------- Auto-submit when timeLeft becomes 0 (e.g., set initially to 0) ----------
+  useEffect(() => {
+    if (quizActive && quizReady && !submitted && timeLeft === 0 && !disqualified) {
+      handleTimeExpired();
+    }
+  }, [timeLeft, quizActive, quizReady, submitted, disqualified, handleTimeExpired]);
 
   // ---------- Determine mobile ----------
   const isMobile = window.innerWidth < 768 || ('ontouchstart' in window);
