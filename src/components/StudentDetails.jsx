@@ -1,152 +1,294 @@
- import React, { useState, useEffect } from "react";
+```jsx
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "./api";
 import "./App.css";
 
 function Registration() {
   const navigate = useNavigate();
+
   const [fieldsConfig, setFieldsConfig] = useState({});
   const [form, setForm] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Hardcoded fields (always present)
+  // Hardcoded fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
 
+  // --------------------------------------------------
+  // Load registration configuration
+  // --------------------------------------------------
   useEffect(() => {
-    fetch("https://quizappbackend-xngu.onrender.com/registration-config")
-      .then((r) => r.json())
-      .then((data) => {
+    const loadRegistrationConfig = async () => {
+      try {
+        const response = await apiFetch("/registration-config");
+
+        const contentType = response.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+          const text = await response.text();
+          throw new Error(
+            `Expected JSON but received ${contentType}: ${text.slice(0, 200)}`
+          );
+        }
+
+        const data = await response.json();
+
         if (data.success) {
-          console.log("✅ Registration config received:", data.registrationFields);
-          setFieldsConfig(data.registrationFields);
-          // Initialize form with empty values for all enabled fields (extra fields only)
+          console.log(
+            "✅ Registration config received:",
+            data.registrationFields
+          );
+
+          const registrationFields = data.registrationFields || {};
+
+          setFieldsConfig(registrationFields);
+
+          // Initialize extra fields
           const initialForm = {};
-          Object.keys(data.registrationFields).forEach((field) => {
+
+          Object.keys(registrationFields).forEach((field) => {
             initialForm[field] = "";
           });
+
           setForm(initialForm);
+
           console.log("📝 Form initialised with:", initialForm);
         } else {
           console.error("❌ Failed to fetch config:", data);
         }
+      } catch (err) {
+        console.error("❌ Registration config error:", err);
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Network error:", err);
-        setLoading(false);
-      });
+      }
+    };
+
+    loadRegistrationConfig();
   }, []);
 
+  // --------------------------------------------------
+  // Handle custom field changes
+  // --------------------------------------------------
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
-    if (type === "radio") {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
+  // --------------------------------------------------
+  // Submit registration
+  // --------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (submitting) return;
+
     setSubmitting(true);
 
-    // ---- Validate hardcoded fields ----
-    if (!name.trim()) {
-      alert("Name is required.");
-      setSubmitting(false);
-      return;
-    }
-    if (!email.trim()) {
-      alert("Email is required.");
-      setSubmitting(false);
-      return;
-    }
-    // Simple email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert("Please enter a valid email address.");
-      setSubmitting(false);
-      return;
-    }
-
-    // ---- Check required extra fields ----
-    const missing = [];
-    for (const [field, settings] of Object.entries(fieldsConfig)) {
-      if (settings.enabled && settings.required && !form[field]) {
-        missing.push(field.charAt(0).toUpperCase() + field.slice(1));
-      }
-    }
-    if (missing.length) {
-      alert(`Required fields missing: ${missing.join(", ")}`);
-      setSubmitting(false);
-      return;
-    }
-
-    // ---- Build payload ----
-    const payload = {
-      name: name.trim(),
-      email: email.trim(),
-    };
-    // Add extra custom fields
-    for (const [field, settings] of Object.entries(fieldsConfig)) {
-      if (settings.enabled) {
-        payload[field] = form[field] || "";
-      }
-    }
-    console.log("📤 Submitting payload:", payload);
-
     try {
-      const res = await fetch("https://quizappbackend-xngu.onrender.com/register", {
+      // ----------------------------------------------
+      // Validate name
+      // ----------------------------------------------
+      if (!name.trim()) {
+        alert("Name is required.");
+        return;
+      }
+
+      // ----------------------------------------------
+      // Validate email
+      // ----------------------------------------------
+      if (!email.trim()) {
+        alert("Email is required.");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!emailRegex.test(email.trim())) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+
+      // ----------------------------------------------
+      // Validate required custom fields
+      // ----------------------------------------------
+      const missing = [];
+
+      for (const [field, settings] of Object.entries(fieldsConfig)) {
+        if (
+          settings?.enabled &&
+          settings?.required &&
+          !String(form[field] || "").trim()
+        ) {
+          missing.push(
+            field.charAt(0).toUpperCase() + field.slice(1)
+          );
+        }
+      }
+
+      if (missing.length > 0) {
+        alert(
+          `Required fields missing: ${missing.join(", ")}`
+        );
+        return;
+      }
+
+      // ----------------------------------------------
+      // Build registration payload
+      // ----------------------------------------------
+      const payload = {
+        name: name.trim(),
+        email: email.trim(),
+      };
+
+      // Add enabled custom fields
+      for (const [field, settings] of Object.entries(fieldsConfig)) {
+        if (settings?.enabled) {
+          payload[field] = form[field] || "";
+        }
+      }
+
+      console.log("📤 Submitting registration payload:", payload);
+
+      // ----------------------------------------------
+      // Send registration request
+      // ----------------------------------------------
+      const response = await apiFetch("/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "registration-card.pdf";
-        a.click();
-        URL.revokeObjectURL(url);
-        alert("✅ Registration successful! PDF downloaded.");
-        navigate("/login");
+      // ----------------------------------------------
+      // Registration endpoint returns PDF
+      // ----------------------------------------------
+      const contentType = response.headers.get("content-type") || "";
+
+      if (response.ok) {
+        if (contentType.includes("application/pdf")) {
+          const blob = await response.blob();
+
+          const url = window.URL.createObjectURL(blob);
+
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "registration-card.pdf";
+
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          window.URL.revokeObjectURL(url);
+
+          alert("✅ Registration successful! PDF downloaded.");
+
+          navigate("/login");
+          return;
+        }
+
+        // If backend unexpectedly returns JSON
+        if (contentType.includes("application/json")) {
+          const data = await response.json();
+
+          if (data.success) {
+            alert("✅ Registration successful!");
+            navigate("/login");
+          } else {
+            alert(data.message || "Registration failed.");
+          }
+
+          return;
+        }
+
+        // Unexpected response type
+        const text = await response.text();
+
+        throw new Error(
+          `Unexpected server response: ${text.slice(0, 300)}`
+        );
+      }
+
+      // ----------------------------------------------
+      // Handle server errors
+      // ----------------------------------------------
+      if (contentType.includes("application/json")) {
+        const errorData = await response.json();
+
+        alert(
+          errorData.message ||
+            `Registration failed (${response.status}).`
+        );
       } else {
-        const errorData = await res.json();
-        alert(errorData.message || "Registration failed.");
+        const errorText = await response.text();
+
+        console.error("Registration server error:", errorText);
+
+        alert(
+          `Registration failed (${response.status}).`
+        );
       }
     } catch (err) {
-      alert("Network error. Please try again.");
+      console.error("❌ Registration error:", err);
+
+      alert(
+        `Network/server error: ${
+          err.message || "Please try again."
+        }`
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Helper: render field input for extra custom fields
+  // --------------------------------------------------
+  // Render custom field
+  // --------------------------------------------------
   const renderField = (fieldName, settings) => {
     const value = form[fieldName] || "";
-    const label = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
-    const required = settings.required;
 
-    // Special case: gender → radio buttons
+    const label =
+      fieldName.charAt(0).toUpperCase() +
+      fieldName.slice(1);
+
+    const required = Boolean(settings?.required);
+
+    // ----------------------------------------------
+    // Gender
+    // ----------------------------------------------
     if (fieldName === "gender") {
       return (
         <div key={fieldName} className="form-group">
           <label className="form-label">
-            Gender {required && <span style={{ color: "var(--danger)" }}>*</span>}
+            Gender{" "}
+            {required && (
+              <span style={{ color: "var(--danger)" }}>
+                *
+              </span>
+            )}
           </label>
+
           <div style={styles.radioGroup}>
             {["Male", "Female", "Other"].map((option) => {
               const isChecked = value === option;
+
               return (
                 <label
                   key={option}
                   style={{
                     ...styles.radioLabel,
-                    backgroundColor: isChecked ? "var(--primary-light)" : "var(--surface)",
-                    borderColor: isChecked ? "var(--primary)" : "var(--border)",
+                    backgroundColor: isChecked
+                      ? "var(--primary-light)"
+                      : "var(--surface)",
+                    borderColor: isChecked
+                      ? "var(--primary)"
+                      : "var(--border)",
                     borderWidth: 2,
                     borderStyle: "solid",
                   }}
@@ -160,13 +302,19 @@ function Registration() {
                     required={required}
                     style={styles.radioInput}
                   />
+
                   <span
                     style={{
                       ...styles.radioCustom,
-                      backgroundColor: isChecked ? "var(--primary)" : "transparent",
-                      borderColor: isChecked ? "var(--primary)" : "var(--border)",
+                      backgroundColor: isChecked
+                        ? "var(--primary)"
+                        : "transparent",
+                      borderColor: isChecked
+                        ? "var(--primary)"
+                        : "var(--border)",
                     }}
                   />
+
                   {option}
                 </label>
               );
@@ -176,14 +324,25 @@ function Registration() {
       );
     }
 
-    // All other fields – text/email input
-    const inputType = fieldName === "email" ? "email" : "text";
+    // ----------------------------------------------
+    // Normal text/email fields
+    // ----------------------------------------------
+    const inputType =
+      fieldName === "email" ? "email" : "text";
+
     const placeholder = `${label}${required ? " *" : ""}`;
+
     return (
       <div key={fieldName} className="form-group">
         <label className="form-label">
-          {label} {required && <span style={{ color: "var(--danger)" }}>*</span>}
+          {label}{" "}
+          {required && (
+            <span style={{ color: "var(--danger)" }}>
+              *
+            </span>
+          )}
         </label>
+
         <input
           type={inputType}
           name={fieldName}
@@ -197,56 +356,134 @@ function Registration() {
     );
   };
 
+  // --------------------------------------------------
+  // Loading
+  // --------------------------------------------------
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        <div className="spinner" style={{ width: 40, height: 40 }} />
+        <div
+          className="spinner"
+          style={{
+            width: 40,
+            height: 40,
+          }}
+        />
+
         <p>Loading registration form...</p>
       </div>
     );
   }
 
-  // Get enabled extra fields from config
-  const enabledFields = Object.entries(fieldsConfig).filter(([_, settings]) => settings.enabled);
+  // --------------------------------------------------
+  // Enabled custom fields
+  // --------------------------------------------------
+  const enabledFields = Object.entries(
+    fieldsConfig
+  ).filter(
+    ([, settings]) => settings?.enabled
+  );
 
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
   return (
     <div style={styles.pageWrapper}>
       <div style={styles.card}>
-        <h2 style={styles.title}>📝 Register for Quiz</h2>
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* ---- Hardcoded Name field ---- */}
+        <h2 style={styles.title}>
+          📝 Register for Quiz
+        </h2>
+
+        <form
+          onSubmit={handleSubmit}
+          style={styles.form}
+        >
+          {/* Name */}
           <div className="form-group">
-            <label className="form-label">Full Name <span style={{ color: "var(--danger)" }}>*</span></label>
+            <label className="form-label">
+              Full Name{" "}
+              <span
+                style={{
+                  color: "var(--danger)",
+                }}
+              >
+                *
+              </span>
+            </label>
+
             <input
               type="text"
               placeholder="Enter your full name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) =>
+                setName(e.target.value)
+              }
               required
               className="form-control"
             />
           </div>
 
-          {/* ---- Hardcoded Email field ---- */}
+          {/* Email */}
           <div className="form-group">
-            <label className="form-label">Email <span style={{ color: "var(--danger)" }}>*</span></label>
+            <label className="form-label">
+              Email{" "}
+              <span
+                style={{
+                  color: "var(--danger)",
+                }}
+              >
+                *
+              </span>
+            </label>
+
             <input
               type="email"
               placeholder="Enter your email address"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               required
               className="form-control"
             />
           </div>
 
-          {/* ---- Extra custom fields from admin config ---- */}
-          {enabledFields.map(([field, settings]) => renderField(field, settings))}
+          {/* Custom fields */}
+          {enabledFields.map(
+            ([field, settings]) =>
+              renderField(field, settings)
+          )}
 
-          <button type="submit" disabled={submitting} style={styles.submitBtn}>
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              ...styles.submitBtn,
+              opacity: submitting ? 0.7 : 1,
+              cursor: submitting
+                ? "not-allowed"
+                : "pointer",
+            }}
+          >
             {submitting ? (
-              <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <span
+                  className="spinner"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderWidth: 2,
+                  }}
+                />
+
                 Registering...
               </span>
             ) : (
@@ -254,9 +491,15 @@ function Registration() {
             )}
           </button>
         </form>
+
         <p style={styles.loginLink}>
           Already registered?{" "}
-          <button onClick={() => navigate("/login")} type="button" style={styles.linkBtn}>
+
+          <button
+            onClick={() => navigate("/login")}
+            type="button"
+            style={styles.linkBtn}
+          >
             Go to login
           </button>
         </p>
@@ -267,7 +510,10 @@ function Registration() {
 
 export default Registration;
 
-// ---------- Local styles ----------
+// --------------------------------------------------
+// Styles
+// --------------------------------------------------
+
 const styles = {
   pageWrapper: {
     display: "flex",
@@ -277,6 +523,7 @@ const styles = {
     backgroundColor: "var(--background)",
     padding: "1.5rem",
   },
+
   card: {
     backgroundColor: "var(--surface)",
     borderRadius: "var(--radius-lg)",
@@ -285,6 +532,7 @@ const styles = {
     maxWidth: 500,
     width: "100%",
   },
+
   title: {
     marginBottom: "1.5rem",
     fontSize: "1.75rem",
@@ -292,17 +540,20 @@ const styles = {
     color: "var(--text)",
     textAlign: "center",
   },
+
   form: {
     display: "flex",
     flexDirection: "column",
     gap: "1.25rem",
   },
+
   radioGroup: {
     display: "flex",
     gap: "0.75rem",
     flexWrap: "wrap",
     marginTop: "0.25rem",
   },
+
   radioLabel: {
     display: "flex",
     alignItems: "center",
@@ -315,6 +566,7 @@ const styles = {
     transition: "all 0.2s",
     flex: "0 1 auto",
   },
+
   radioInput: {
     position: "absolute",
     opacity: 0,
@@ -322,6 +574,7 @@ const styles = {
     height: 0,
     pointerEvents: "none",
   },
+
   radioCustom: {
     width: 18,
     height: 18,
@@ -331,6 +584,7 @@ const styles = {
     flexShrink: 0,
     transition: "all 0.2s",
   },
+
   submitBtn: {
     padding: "0.75rem 1.5rem",
     fontSize: "1rem",
@@ -339,16 +593,17 @@ const styles = {
     color: "#fff",
     border: "none",
     borderRadius: "var(--radius)",
-    cursor: "pointer",
     transition: "all 0.2s",
     marginTop: "0.5rem",
   },
+
   loginLink: {
     marginTop: "1.5rem",
     textAlign: "center",
     color: "var(--text-secondary)",
     fontSize: "0.95rem",
   },
+
   linkBtn: {
     background: "none",
     border: "none",
@@ -358,6 +613,7 @@ const styles = {
     textDecoration: "underline",
     fontSize: "0.95rem",
   },
+
   loadingContainer: {
     display: "flex",
     flexDirection: "column",
@@ -369,3 +625,4 @@ const styles = {
     color: "var(--text-secondary)",
   },
 };
+```
