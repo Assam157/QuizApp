@@ -1,4 +1,4 @@
- ```jsx
+ 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "./api";
@@ -2041,4 +2041,4 @@ if (
 }
 
 export default QuizPage;
-```
+ 
