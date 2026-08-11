@@ -1,190 +1,126 @@
- // src/api.js
+ // ==================================================
+// API Configuration
+// ==================================================
 
-export const API_BASE =
-  "https://ascent-halt-glorify.ngrok-free.dev" ||
-  "https://quizappbackend-k09m.onrender.com";
+const API_BASE_URL =
+  "https://ascent-halt-glorify.ngrok-free.dev";
 
-// --------------------------------------------------
+
+// ==================================================
 // Build API URL
-// --------------------------------------------------
-export const apiUrl = (path = "") => {
-  if (!path) return API_BASE;
+// ==================================================
 
-  if (path.startsWith("http://") || path.startsWith("https://")) {
+export const apiUrl = (path = "") => {
+  if (!path) return API_BASE_URL;
+
+  // Allow absolute URLs
+  if (
+    path.startsWith("http://") ||
+    path.startsWith("https://")
+  ) {
     return path;
   }
 
-  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
-// --------------------------------------------------
-// Main API fetch function
-//
-// Handles:
-// JSON
-// PDF
-// CSV
-// Excel
-// Images
-// Text
-// Other blobs
-// --------------------------------------------------
-export async function apiFetch(path, options = {}) {
-  const url = apiUrl(path);
 
-  const fetchOptions = {
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData
-        ? {}
-        : {
-            "Content-Type": "application/json",
-          }),
-      ...(options.headers || {}),
-    },
+// ==================================================
+// Main API Fetch
+// ==================================================
+
+export async function apiFetch(path, options = {}) {
+
+  const isFormData =
+    options.body instanceof FormData;
+
+  const headers = {
+
+    // IMPORTANT:
+    // Do NOT set Content-Type for FormData.
+    // The browser automatically sets:
+    // multipart/form-data; boundary=...
+    ...(isFormData
+      ? {}
+      : {
+          "Content-Type": "application/json",
+        }),
+
+    // IMPORTANT:
+    // Prevent ngrok from returning its browser warning page.
+    "ngrok-skip-browser-warning": "true",
+
+    // Preserve headers supplied by components.
+    ...(options.headers || {}),
   };
 
-  const response = await fetch(url, fetchOptions);
+  const response = await fetch(
+    apiUrl(path),
+    {
+      ...options,
+      headers,
+    }
+  );
 
-  const contentType = (
-    response.headers.get("content-type") || ""
-  ).toLowerCase();
+  const contentType =
+    response.headers.get("content-type") || "";
 
-  // ------------------------------------------------
-  // Handle HTTP errors
-  // ------------------------------------------------
+  // Read response once.
+  const text = await response.text();
+
+
+  // ==================================================
+  // HTTP ERROR
+  // ==================================================
+
   if (!response.ok) {
-    let message = `Request failed (${response.status})`;
-
-    try {
-      if (contentType.includes("application/json")) {
-        const data = await response.json();
-
-        message =
-          data.message ||
-          data.error ||
-          message;
-      } else {
-        const text = await response.text();
-
-        if (text.includes("ngrok")) {
-          message =
-            "The backend returned an ngrok page instead of the API response.";
-        } else if (text) {
-          message = text.substring(0, 500);
-        }
-      }
-    } catch {
-      // Keep default error
-    }
-
-    throw new Error(message);
+    throw new Error(
+      `API ${response.status}: ${text.substring(0, 500)}`
+    );
   }
 
-  // ------------------------------------------------
-  // Empty response
-  // ------------------------------------------------
-  if (response.status === 204) {
-    return null;
+
+  // ==================================================
+  // EXPECT JSON
+  // ==================================================
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `Expected JSON but received ${contentType}: ${text.substring(
+        0,
+        500
+      )}`
+    );
   }
 
-  // ------------------------------------------------
-  // JSON
-  // ------------------------------------------------
-  if (
-    contentType.includes("application/json") ||
-    contentType.includes("application/problem+json")
-  ) {
-    return await response.json();
+
+  // ==================================================
+  // PARSE JSON
+  // ==================================================
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `Invalid JSON response: ${text.substring(0, 500)}`
+    );
   }
-
-  // ------------------------------------------------
-  // PDF
-  // ------------------------------------------------
-  if (contentType.includes("application/pdf")) {
-    return await response.blob();
-  }
-
-  // ------------------------------------------------
-  // CSV
-  // ------------------------------------------------
-  if (
-    contentType.includes("text/csv") ||
-    contentType.includes("application/csv")
-  ) {
-    return await response.blob();
-  }
-
-  // ------------------------------------------------
-  // Excel
-  // ------------------------------------------------
-  if (
-    contentType.includes("application/vnd.ms-excel") ||
-    contentType.includes(
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-  ) {
-    return await response.blob();
-  }
-
-  // ------------------------------------------------
-  // Images
-  // ------------------------------------------------
-  if (contentType.startsWith("image/")) {
-    return await response.blob();
-  }
-
-  // ------------------------------------------------
-  // Other files
-  // ------------------------------------------------
-  if (
-    contentType.includes("application/octet-stream") ||
-    contentType.includes("application/zip") ||
-    contentType.includes("application/msword") ||
-    contentType.includes(
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-  ) {
-    return await response.blob();
-  }
-
-  // ------------------------------------------------
-  // Text
-  // ------------------------------------------------
-  if (
-    contentType.includes("text/plain") ||
-    contentType.includes("text/html")
-  ) {
-    const text = await response.text();
-
-    // Prevent accidentally treating ngrok HTML as API data
-    if (
-      text.trim().startsWith("<!DOCTYPE html") ||
-      text.trim().startsWith("<html")
-    ) {
-      throw new Error(
-        "Expected API response but received HTML. Check the backend URL."
-      );
-    }
-
-    return text;
-  }
-
-  // ------------------------------------------------
-  // Fallback
-  // ------------------------------------------------
-  return await response.blob();
 }
+
 
 // ==================================================
 // GET
 // ==================================================
 
-export const apiGet = (path, options = {}) =>
+export const apiGet = (
+  path,
+  options = {}
+) =>
   apiFetch(path, {
     ...options,
     method: "GET",
   });
+
 
 // ==================================================
 // POST
@@ -201,6 +137,7 @@ export const apiPost = (
     body: JSON.stringify(body),
   });
 
+
 // ==================================================
 // PUT
 // ==================================================
@@ -215,6 +152,7 @@ export const apiPut = (
     method: "PUT",
     body: JSON.stringify(body),
   });
+
 
 // ==================================================
 // PATCH
@@ -231,6 +169,7 @@ export const apiPatch = (
     body: JSON.stringify(body),
   });
 
+
 // ==================================================
 // DELETE
 // ==================================================
@@ -244,6 +183,7 @@ export const apiDelete = (
     method: "DELETE",
   });
 
+
 // ==================================================
 // FILE UPLOAD
 // ==================================================
@@ -253,6 +193,7 @@ export const apiUpload = (
   formData,
   options = {}
 ) => {
+
   if (!(formData instanceof FormData)) {
     throw new Error(
       "apiUpload requires a FormData object"
@@ -266,70 +207,13 @@ export const apiUpload = (
   });
 };
 
-// ==================================================
-// Download helper
-// ==================================================
-
-export async function downloadFile(
-  path,
-  filename = "download"
-) {
-  const blob = await apiFetch(path);
-
-  if (!(blob instanceof Blob)) {
-    throw new Error(
-      "Server did not return a downloadable file."
-    );
-  }
-
-  const url = window.URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = filename;
-
-  document.body.appendChild(link);
-
-  link.click();
-
-  link.remove();
-
-  setTimeout(() => {
-    window.URL.revokeObjectURL(url);
-  }, 1000);
-
-  return blob;
-};
 
 // ==================================================
-// Specific downloads
-// ==================================================
-
-export const downloadPdf = (
-  path,
-  filename = "document.pdf"
-) =>
-  downloadFile(path, filename);
-
-export const downloadCsv = (
-  path,
-  filename = "export.csv"
-) =>
-  downloadFile(path, filename);
-
-export const downloadExcel = (
-  path,
-  filename = "export.xlsx"
-) =>
-  downloadFile(path, filename);
-
-// ==================================================
-// Default export
+// Default Export
 // ==================================================
 
 const api = {
-  API_BASE,
+  API_BASE_URL,
   apiUrl,
   apiFetch,
   apiGet,
@@ -338,10 +222,6 @@ const api = {
   apiPatch,
   apiDelete,
   apiUpload,
-  downloadFile,
-  downloadPdf,
-  downloadCsv,
-  downloadExcel,
 };
 
 export default api;
