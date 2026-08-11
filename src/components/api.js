@@ -1,7 +1,7 @@
  // src/api.js
 
 export const API_BASE =
-  import.meta.env.VITE_API_BASE_URL ||
+  "https://ascent-halt-glorify.ngrok-free.dev" ||
   "https://quizappbackend-k09m.onrender.com";
 
 // --------------------------------------------------
