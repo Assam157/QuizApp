@@ -2,7 +2,7 @@
 
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
-  "https://quizappbackend-xngu.onrender.com";
+  "https://quizappbackend-k09m.onrender.com";
 
 // --------------------------------------------------
 // Build API URL
